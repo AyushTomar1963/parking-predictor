@@ -1,0 +1,54 @@
+# Queueing Theory Configuration
+
+# Erlang-C Settings
+erlang_c:
+  numerical_stability:
+    min_lambda: 1e-8
+    min_mu: 1e-8
+    rho_threshold: 0.999999  # near 1.0 = unstable
+  
+  defaults:
+    fallback_service_time_hours: 1.0
+    min_servers: 1
+
+# Parameter Estimation
+estimation:
+  # How to estimate arrival rates from data
+  arrival_method: "resample"  # "resample" or "interval"
+  
+  # Resampling settings
+  resample_freq: "H"  # hourly
+  
+  # Little's Law settings
+  littles_law:
+    enabled: true
+    min_lambda_threshold: 1e-8
+
+# Booking Probability
+booking:
+  # Probability thresholds for UX buckets
+  buckets:
+    very_high: [0.95, 1.00]  # >= 95% chance
+    high: [0.70, 0.95]       # 70-95% chance
+    medium: [0.40, 0.70]     # 40-70% chance
+    low: [0.00, 0.40]        # < 40% chance
+  
+  # Wait time categories (minutes)
+  wait_categories:
+    immediate: 0
+    short: [0, 5]
+    moderate: [5, 15]
+    long: [15, 30]
+    very_long: 30  # > 30 min
+
+# Parking Lot Configuration
+parking_lots:
+  default_capacity: 600
+  main_lot: "BHMBCCMKT01"
+  
+  # Lot-specific overrides (if needed)
+  lot_configs:
+    BHMBCCMKT01:
+      capacity: 600
+      base_price: 10.0
+      peak_hours: [8, 9, 10, 17, 18, 19]

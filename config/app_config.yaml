@@ -1,0 +1,41 @@
+# Application Configuration
+
+app:
+  name: "Parking Predictor"
+  version: "1.0.0"
+  host: "0.0.0.0"
+# Placeholder for application configuration
+# Add your app-specific settings here
+app:
+  name: "Parking Predictor"
+  version: "0.1"
+  port: 8000
+  debug: true
+  reload: true
+
+# Database/Data paths
+data:
+  raw_path: "data/raw/"
+  processed_path: "data/processed/"
+  models_path: "data/models/"
+  cache_path: "data/cache/"
+
+# Cache configuration
+cache:
+  enabled: true
+  ttl: 300  # seconds (5 minutes)
+  max_size: 1000  # max cached items
+
+# API settings
+api:
+  cors_origins: ["*"]
+  rate_limit: 100  # requests per minute
+  timeout: 30  # seconds
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/app.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5

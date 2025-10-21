@@ -1,0 +1,5 @@
+# Placeholder for logging configuration
+# Add your logging-specific settings here
+logging:
+  level: "INFO"
+  file: "logs/app.log"

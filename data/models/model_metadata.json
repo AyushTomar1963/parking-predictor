@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-10-21T17:57:02.035450",
+  "lot_id": "BHMBCCMKT01",
+  "capacity": 600,
+  "train_samples": 1390,
+  "val_samples": 348,
+  "features": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_24",
+    "lag_48",
+    "hour_of_day",
+    "day_of_week",
+    "is_weekend"
+  ],
+  "models": [
+    "lightgbm",
+    "xgboost",
+    "arima"
+  ],
+  "metrics": {
+    "lightgbm": {
+      "MAE": 7.605111242388278,
+      "MSE": 147.5471112149281,
+      "RMSE": 12.146897184669346,
+      "MAPE": 15.922127955438498
+    },
+    "xgboost": {
+      "MAE": 7.511600440306681,
+      "MSE": 167.8750879552706,
+      "RMSE": 12.956661914060682,
+      "MAPE": 16.73030460877072
+    },
+    "arima": {
+      "MAE": 97.83746978430246,
+      "MSE": 18290.506333594578,
+      "RMSE": 135.24239843183267,
+      "MAPE": 81.88433712865802
+    }
+  }
+}
