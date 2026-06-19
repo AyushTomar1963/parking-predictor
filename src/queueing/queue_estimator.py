@@ -4,12 +4,14 @@ Queue Parameter Estimator
 This module estimates queueing theory parameters (λ, μ) from historical parking data.
 
 Based on: Main.ipynb Cell #15 (get_queueing_inputs function)
+Extended with: Xiao et al. (2018) curve-fit parameter estimation.
 """
 
 import math
 import numpy as np
 import pandas as pd
 from typing import Tuple, Dict
+from scipy.optimize import curve_fit
 
 
 def get_queueing_inputs(
@@ -153,6 +155,95 @@ def get_queueing_inputs(
     print("=" * 60)
     
     return hourly_arrival_rates, float(service_rate_mu)
+
+
+# -----------------------
+# Xiao et al. (2018) Curve-Fit Parameter Estimation
+# -----------------------
+
+def _xiao_model_func(t, lam, mu, E0_val):
+    """
+    Internal function for curve fitting Xiao et al. (2018) Eq. 1:
+    Et = e^(-mu*t) * (E0 - lambda/mu) + (lambda/mu)
+
+    Args:
+        t: Time elapsed (hours)
+        lam: Arrival rate λ
+        mu: Service rate μ
+        E0_val: Initial occupancy at t=0
+
+    Returns:
+        float: Predicted occupancy at time t
+    """
+    return np.exp(-mu * t) * (E0_val - lam / mu) + (lam / mu)
+
+
+def estimate_xiao_parameters_curve_fit(
+    df: pd.DataFrame,
+    timestamp_col: str = 'LastUpdated',
+    occupancy_col: str = 'Occupancy'
+) -> Tuple[float, float]:
+    """
+    Advanced upgrade: Estimates global lambda and mu using Xiao et al. (2018)
+    constrained curve-fitting on the historical mean occupancy curve.
+    This replaces Little's Law with a mathematically stationary fit.
+
+    Method:
+        - Computes time elapsed (t_hours) from the first observation
+        - Fixes E0 as the initial occupancy value
+        - Fits Xiao Eq. 1 to the full occupancy time series using scipy curve_fit
+        - Falls back to Little's Law (via get_queueing_inputs) if fitting fails
+
+    Args:
+        df: DataFrame containing parking lot data
+        timestamp_col: Name of timestamp column (default: 'LastUpdated')
+        occupancy_col: Name of occupancy column (default: 'Occupancy')
+
+    Returns:
+        Tuple containing:
+            - estimated_lambda (float): Fitted arrival rate λ (cars/hour)
+            - estimated_mu (float): Fitted service rate μ (per hour)
+
+    Example:
+        >>> df = pd.read_csv('dataset.csv')
+        >>> lam, mu = estimate_xiao_parameters_curve_fit(df)
+        >>> print(f"Fitted λ: {lam:.4f}, μ: {mu:.4f}")
+
+    References:
+        - Xiao et al. (2018), Eq. 1: Et = e^(-mu*t) * (E0 - lambda/mu) + (lambda/mu)
+    """
+    df_proc = df.copy()
+    df_proc[timestamp_col] = pd.to_datetime(df_proc[timestamp_col])
+    df_proc = df_proc.sort_values(by=timestamp_col).reset_index(drop=True)
+
+    # Calculate hours elapsed from the first observation to use as 't'
+    start_time = df_proc[timestamp_col].iloc[0]
+    df_proc['t_hours'] = (df_proc[timestamp_col] - start_time).dt.total_seconds() / 3600.0
+
+    t_data = df_proc['t_hours'].values
+    occupancy_data = df_proc[occupancy_col].values
+
+    if len(t_data) < 3:
+        return 0.0, 0.0  # Not enough data to fit a curve
+
+    E0_val = occupancy_data[0]
+
+    # Wrapper to fix E0_val for the curve fit (only lam and mu are free params)
+    def fit_func(t, lam, mu):
+        return _xiao_model_func(t, lam, mu, E0_val)
+
+    try:
+        # Constrained fit: lambda >= 0, mu >= 0
+        popt, _ = curve_fit(fit_func, t_data, occupancy_data, bounds=(0, np.inf), maxfev=2000)
+        estimated_lambda = popt[0]
+        estimated_mu = popt[1]
+        return estimated_lambda, estimated_mu
+    except Exception as e:
+        print(f"Curve fitting failed: {e}. Falling back to Little's Law.")
+        # Fallback to Little's Law if curve fails to converge
+        _, mu = get_queueing_inputs(df, 600, timestamp_col, occupancy_col)
+        lam = df[occupancy_col].mean() * mu
+        return lam, mu
 
 
 def estimate_arrival_rate_for_hour(
@@ -301,10 +392,19 @@ if __name__ == "__main__":
         'Occupancy': occupancy
     })
     
-    # Test the estimator
+    # Test Little's Law estimator
     capacity = 100
     hourly_rates, mu = get_queueing_inputs(df_test, capacity)
-    
+
+    # Test Xiao curve-fit estimator
+    print("\n" + "=" * 60)
+    print("Xiao et al. (2018) Curve-Fit Parameter Estimation")
+    print("=" * 60)
+    xiao_lambda, xiao_mu = estimate_xiao_parameters_curve_fit(df_test)
+    print(f"Fitted λ (arrival rate) : {xiao_lambda:.4f} cars/hour")
+    print(f"Fitted μ (service rate) : {xiao_mu:.4f} per hour")
+    print(f"Implied avg duration    : {1/xiao_mu:.2f} hours" if xiao_mu > 0 else "μ=0, cannot compute duration")
+
     print("\n" + "=" * 60)
     print("Validation Check")
     print("=" * 60)
